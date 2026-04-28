@@ -80,7 +80,11 @@ async fn main() -> anyhow::Result<()> {
     let start_dir = std::fs::canonicalize(&start_dir).unwrap_or(start_dir);
 
     // Initialize app state
-    let mut app = App::new(start_dir, action_tx.clone());
+    let fs_watcher = match vfs::watcher::FsWatcher::new(action_tx.clone()) {
+        Ok(w) => Some(w),
+        Err(_) => None, // Graceful degradation — no live reload if watcher fails
+    };
+    let mut app = App::new(start_dir, action_tx.clone(), fs_watcher);
 
     // Start the event handler
     let mut event_handler = EventHandler::new(50); // ~20 ticks/sec

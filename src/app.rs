@@ -9,6 +9,7 @@ use crate::state::mode::Mode;
 use crate::state::selection::Selection;
 use crate::state::tab::Tab;
 use crate::ui::preview::PreviewContent;
+use crate::vfs::watcher::FsWatcher;
 
 /// The kind of input prompt currently displayed.
 #[derive(Debug, Clone)]
@@ -79,10 +80,13 @@ pub struct App {
     /// When a new preview is requested, the previous token is cancelled
     /// so stale I/O tasks don't pile up during rapid scrolling.
     preview_cancel: Option<CancellationToken>,
+
+    /// Filesystem watcher — monitors the current directory for external changes.
+    fs_watcher: Option<FsWatcher>,
 }
 
 impl App {
-    pub fn new(start_dir: PathBuf, action_tx: UnboundedSender<Action>) -> Self {
+    pub fn new(start_dir: PathBuf, action_tx: UnboundedSender<Action>, fs_watcher: Option<FsWatcher>) -> Self {
         let tab = Tab::new(start_dir);
 
         Self {
@@ -106,6 +110,7 @@ impl App {
             should_quit: false,
             last_preview_path: None,
             preview_cancel: None,
+            fs_watcher,
         }
     }
 
@@ -184,6 +189,11 @@ impl App {
     /// Request loading of the current and parent directories.
     pub fn request_directory_load(&mut self) {
         let current_dir = self.tab().current_dir.clone();
+
+        // Update the filesystem watcher to monitor the new directory
+        if let Some(ref watcher) = self.fs_watcher {
+            watcher.watch(&current_dir);
+        }
 
         // Load current directory
         let tx = self.action_tx.clone();
@@ -532,6 +542,20 @@ impl App {
             }
             Action::OperationError { message } => {
                 self.set_status(message, true);
+            }
+
+            // ── Filesystem Watcher ───────────────────────────────
+            Action::RefreshDir => {
+                // External filesystem change detected — silently reload
+                // without showing a status message (it's automatic).
+                let current_dir = self.tab().current_dir.clone();
+                let tx = self.action_tx.clone();
+                tokio::spawn(crate::vfs::scanner::scan_directory(current_dir, tx));
+                // Also reset preview in case the highlighted entry changed
+                if let Some(cancel) = self.preview_cancel.take() {
+                    cancel.cancel();
+                }
+                self.last_preview_path = None;
             }
 
             // ── UI ──────────────────────────────────────────────

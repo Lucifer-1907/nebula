@@ -63,6 +63,10 @@ pub enum Action {
         message: String,
     },
 
+    // ── Filesystem Watcher ────────────────────────────────────────
+    /// Triggered by the inotify/kqueue watcher when files change externally.
+    RefreshDir,
+
     // ── UI ──────────────────────────────────────────────────────
     Tick,
     Resize(u16, u16),
