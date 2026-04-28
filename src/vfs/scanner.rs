@@ -112,27 +112,32 @@ pub async fn load_preview(
                 let cancel_clone = cancel.clone();
                 
                 // Decode image in a blocking task so we don't block the async runtime
-                let result = tokio::task::spawn_blocking(move || {
+                let result = tokio::task::spawn_blocking(move || -> Result<ratatui_image::protocol::StatefulProtocol, String> {
                     if cancel_clone.is_cancelled() {
-                        return None;
+                        return Err("Cancelled".to_string());
                     }
                     
-                    let dyn_img = image::open(&img_path).ok()?;
+                    let dyn_img = match image::open(&img_path) {
+                        Ok(img) => img,
+                        Err(e) => return Err(format!("Decode error: {}", e)),
+                    };
                     
                     if cancel_clone.is_cancelled() {
-                        return None;
+                        return Err("Cancelled".to_string());
                     }
                     
-                    Some(picker.new_resize_protocol(dyn_img))
+                    Ok(picker.new_resize_protocol(dyn_img))
                 })
                 .await;
 
                 match result {
-                    Ok(Some(protocol)) => {
+                    Ok(Ok(protocol)) => {
                         use std::sync::{Arc, Mutex};
                         use crate::ui::preview::ImageProtocol;
                         PreviewContent::Image(ImageProtocol(Arc::new(Mutex::new(protocol))))
                     }
+                    Ok(Err(msg)) if msg == "Cancelled" => PreviewContent::Empty,
+                    Ok(Err(msg)) => PreviewContent::Error(msg),
                     _ => PreviewContent::Empty,
                 }
             } else {

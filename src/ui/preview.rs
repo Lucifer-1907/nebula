@@ -117,13 +117,29 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
 
         PreviewContent::Image(ref protocol) => {
-            if let Ok(mut state) = protocol.0.lock() {
-                let image_widget = StatefulImage::new();
-                frame.render_stateful_widget(image_widget, block.inner(area), &mut *state);
+            let inner_area = block.inner(area);
+            if inner_area.width < 10 || inner_area.height < 5 {
+                let mut lines = Vec::new();
+                for _ in 0..inner_area.height.saturating_sub(1) / 2 {
+                    lines.push(Line::from(""));
+                }
+                lines.push(Line::from(vec![Span::styled(
+                    "\u{f071} Too small",
+                    Style::default().fg(Palette::YELLOW),
+                )]));
+                let paragraph = Paragraph::new(lines)
+                    .block(block)
+                    .alignment(Alignment::Center);
+                frame.render_widget(paragraph, area);
+            } else {
+                if let Ok(mut state) = protocol.0.lock() {
+                    let image_widget = StatefulImage::new();
+                    frame.render_stateful_widget(image_widget, inner_area, &mut *state);
+                }
+                // Render the borders around the image
+                let paragraph = Paragraph::new("").block(block);
+                frame.render_widget(paragraph, area);
             }
-            // Render the borders around the image
-            let paragraph = Paragraph::new("").block(block);
-            frame.render_widget(paragraph, area);
         }
 
         PreviewContent::Empty => {
@@ -192,14 +208,27 @@ pub fn render(frame: &mut Frame, app: &mut App, area: Rect) {
         }
 
         PreviewContent::Error(msg) => {
-            let content = Line::from(vec![
-                Span::styled(
-                    format!("  \u{f06a} {}", msg), //  — warning icon
-                    Palette::error_style(),
-                ),
-            ]);
+            let inner_height = area.height.saturating_sub(2);
+            let pad_top = inner_height / 3;
 
-            let paragraph = Paragraph::new(content).block(block);
+            let mut lines: Vec<Line> = Vec::new();
+            for _ in 0..pad_top {
+                lines.push(Line::from(""));
+            }
+            lines.push(Line::from(vec![Span::styled(
+                "\u{f06a} Error",
+                Palette::error_style().add_modifier(Modifier::BOLD),
+            )]));
+            lines.push(Line::from(""));
+            lines.push(Line::from(vec![Span::styled(
+                msg.to_string(),
+                Style::default().fg(Palette::RED),
+            )]));
+
+            let paragraph = Paragraph::new(lines)
+                .block(block)
+                .alignment(Alignment::Center)
+                .wrap(ratatui::widgets::Wrap { trim: true });
             frame.render_widget(paragraph, area);
         }
     }
