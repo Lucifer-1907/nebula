@@ -2,7 +2,6 @@
   <img src="https://img.shields.io/badge/rust-1.70%2B-orange?logo=rust&logoColor=white" alt="Rust 1.70+">
   <img src="https://img.shields.io/badge/platform-Linux-blue?logo=linux&logoColor=white" alt="Linux">
   <img src="https://img.shields.io/badge/TUI-ratatui-purple" alt="ratatui">
-  <img src="https://img.shields.io/badge/license-MIT-green" alt="MIT License">
 </p>
 
 <h1 align="center">🌌 Nebula</h1>
@@ -257,12 +256,7 @@ Contributions are welcome! Feel free to open issues and pull requests.
 
 ---
 
-## 📝 License
-
-This project is open source. See the repository for license details.
-
----
 
 <p align="center">
-  Built with 🦀 Rust and ❤️ by <a href="https://github.com/Aanand010907">Aanand010907</a>
+  Built with Rust and ❤️ by <a href="https://github.com/Aanand010907">Aanand010907</a>
 </p>
